@@ -1,6 +1,8 @@
 # Arquitectura Hexagonal
 
-Una de las importantes lecciones que un desarrollador de software puede aprender es familiarizarse con el concepto de arquitectura hexagonal, también conocida como arquitectura de puertos y adaptadores, propuesta inicialmente por Alistair Cockburn.
+Los desarrolladores de software nos encuentramos repetidamente con la misma pregunta: **¿Cómo organizar los componentes y el código de un proyecto?**. 
+
+[Alistair Cockburn contestó a esta pregunta en el 2005](https://alistair.cockburn.us/hexagonal-architecture/) con una solución genérica, aplicable a cualquier tipo de aplicación y cualquier lenguaje de programanción: La _arquitectura hexagonal_, también conocida como _arquitectura de puertos y adaptadores_.
 
 ## Historia
 
@@ -10,12 +12,20 @@ La popular arquitectura de capas, conocida también como arquitectura de 3-capas
 * Lógica de negocios
 * Datos
 
-&#8203;
-
-       ,------------.     ,------------------.     ,--------------.  
-       |Presentación| --> |Lógica de Negocios| --> |Acceso a Datos|    
-       `------------'     `------------------'     `--------------'  
-
+       ,------------. 
+       |Presentación| 
+       `------------'
+             |
+             V
+    ,------------------.
+    |Lógica de Negocios|
+    `------------------'
+             |
+             V
+      ,--------------.  
+      |Acceso a Datos|   
+      `--------------'  
+ 
 Por ejemplo, una aplicación de un servicio REST, tendría en su capa de *presentación* una clase para exponer el punto de contacto REST `GET /cuentas/{id}`.
 
 En Java, un archivo `ControladorRESTCuentas.java` contiene la clase de la capa `presentación`
@@ -41,12 +51,19 @@ Lo importante de notar aquí es que la clase `ControladorRESTCuentas` tiene una 
 
 Este `import` es la dependencia representada por la flecha:
 
-       ,-----------------------------.     ,---------------------. 
-       |presentacion                 |     |logica_de_negocios   |
-       |  ,------------------------. |     | ,-----------------. |
-       |  | ControladorRESTCuentas | ------> | ServicioCuentas | |
-       |  `------------------------' |     | `-----------------' |
-       `-----------------------------'     `---------------------'
+       ,-----------------------------.
+       |presentacion                 |
+       |  ,------------------------. |     
+       |  | ControladorRESTCuentas | |
+       |  `------------------------' |
+       `----------------|------------'     
+                        |
+    ,-------------------|-------------. 
+    |logica_de_negocios V             |
+    |         ,-----------------.     |
+    |         | ServicioCuentas |     |
+    |         `-----------------'     |
+    `---------------------------------'
 
 Es decir, para compilar correctamente, `presentacion.ControladorRESTCuentas` **necesita** de `logica_de_negocios.ServicioCuentas`, pero **no** vice versa.
 
@@ -72,12 +89,18 @@ Es una implementación un poco cruda, porque no hay lógica de negocios como tal
 
 Y es la dependencia representada por la flecha:
 
-       ,------------------------.     ,---------------------. 
-       |logica_de_negocios      |     |acceso_a_datos       |
-       |  ,-------------------. |     | ,-----------------. |
-       |  | ServicioCuentas   | ------> | MySqlCuentas    | |
-       |  `-------------------' |     | `-----------------' |
-       `------------------------'     `---------------------'
+       ,------------------------.
+       |logica_de_negocios      |     
+       |  ,-------------------. |    
+       |  | ServicioCuentas   | |
+       |  `-------------------' |   
+       `--------------|---------'    
+     ,----------------|---------. 
+     |acceso_a_datos  V         |
+     |      ,-----------------. |
+     |      | MySqlCuentas    | |
+     |      `-----------------' |
+     `--------------------------'
 
 ## ¿Cúal es el problema?
 
@@ -103,16 +126,20 @@ Imaginemos que ahora necesitamos cambiar la implementación de la clase `acceso_
 
 Este cambio de código en la clase `ServicioCuentas` se ve representado por una nueva flecha hacia `MongoDbCuentas`.
 
-       ,------------------------.     ,---------------------. 
-       |logica_de_negocios      |     |acceso_a_datos       |
-       |  ,-------------------. |     | ,-----------------. |
-       |  | ServicioCuentas   | |     | | MySqlCuentas    | |
-       |  `-------------------' \     | `-----------------' |
-       `------------------------'\    | ,-----------------. |  
-                                  `---> | MongoDbCuentas  | |
-                                      | `-----------------' |
-                                      `---------------------'
-
+       ,------------------------.  
+       |logica_de_negocios      |     
+       |  ,-------------------. |     
+       |  | ServicioCuentas   | |    
+       |  `-------------------' |     
+       `-------------|-----\----'                                     
+                     x      \             
+    ,------------------------\-----------------. 
+    |acceso_a_datos           v                |
+    | ,-----------------.  ,-----------------. |
+    | | MySqlCuentas    |  | MongoDbCuentas  | |
+    | `-----------------'  `-----------------' | 
+    `------------------------------------------'
+    
 Parece un esfuerzo muy simple en este ejemplo, pero una aplicación real puede tener fácilmente docenas de clases en la capa de `logica_de_negocios` que nos veriamos obligados a cambiar.
 
 ## Interfaces al rescate
@@ -159,32 +186,32 @@ En importante notar el `import` que la clase `MySqlCuentas` debe hacer en este c
 
 Gráficamente, estas dependencias serían:
 
-       ,------------------------.     ,------------------------. 
-       |logica_de_negocios      |     |acceso_a_datos          |
-       |  ,-------------------. |     | ,--------------------. |
-       |  | ServicioCuentas   | ------> | RepositorioCuentas | |
-       |  `-------------------' |     | `--------------------' |
-       `------------------------'     |            ∆           |
-                                      |            |           |
-                                      |   ,----------------.   |
-                                      |   |  MySqlCuentas  |   |
-                                      |   `----------------'   |
-                                      `------------------------'
+    ,------------------------.     ,------------------------. 
+    |logica_de_negocios      |     |acceso_a_datos          |
+    |  ,-------------------. |     | ,--------------------. |
+    |  | ServicioCuentas   | ------> | RepositorioCuentas | |
+    |  `-------------------' |     | `--------------------' |
+    `------------------------'     |            ∆           |
+                                   |            |           |
+                                   |   ,----------------.   |
+                                   |   |  MySqlCuentas  |   |
+                                   |   `----------------'   |
+                                   `------------------------'
 
 El diagrama deja en evidencia el beneficio de utilizar la intefaz: Si cambiamos `MySqlCuentas` por `MongoDbCuentas` (quién también debe satifacer la intefaz `RepositorioCuentas`), el cambio del código queda limitado dentro del paquete `acceso_a_datos`:
 
-       ,------------------------.     ,--------------------------------------------. 
-       |logica_de_negocios      |     |acceso_a_datos                              |
-       |  ,-------------------. |     | ,--------------------.                     |
-       |  | ServicioCuentas   | ------> | RepositorioCuentas |                     |
-       |  `-------------------' |     | `--------------------'                     |
-       `------------------------'     |            ∆                               |
-                                      |            `-------------------.           |
-                                      |                                |           |
-                                      |   ,----------------.   ,----------------.  |
-                                      |   |  MySqlCuentas  |   |  MySqlCuentas  |  |
-                                      |   `----------------'   `----------------'  |
-                                      `--------------------------------------------'
+    ,------------------------.   ,------------------------------------------. 
+    |logica_de_negocios      |   |acceso_a_datos                            |
+    |  ,-------------------. |   | ,--------------------.                   |
+    |  | ServicioCuentas   | ----> | RepositorioCuentas |                   |
+    |  `-------------------' |   | `--------------------'                   |
+    `------------------------'   |            ∆                             |
+                                 |            `-------------------.         |
+                                 |                                |         |
+                                 |   ,--------------.   ,----------------.  |
+                                 |   | MySqlCuentas |   | MongoDbCuentas |  |
+                                 |   `--------------'   `----------------'  |
+                                 `------------------------------------------'
 
 **el código en la capa de** `logica_de_negocios` **queda exactamente igual** dado que la dependencia de `ServicioCuentas` es con `RepositorioCuentas` y no con `MySqlCuentas`. Las lineas que código que antes cambiaban cuando no teníamos una *interfaz* de por medio, ahora quedan iguales:
 
@@ -230,19 +257,19 @@ El diagrama anterior ilustra el fundamento principal en el cuál se base la arqu
 
 Una versión más generalizada del diagrama sería:
 
-    ,---------.       ,---------. 
-    | Cliente | ----> | Puerto  | 
-    `---------'       `---------' 
-                           ∆     
-                           |     
-                    ,------------.       ,-----------. 
-                    | Componente | ----> | Adaptador | 
-                    `------------'       `-----------' 
-                                                ∆           
-                                                |           
-                                        ,-------------.   
-                                        |  Proveedor  |   
-                                        `-------------'                                                 
+    ,---------.     ,---------. 
+    | Cliente | --> | Puerto  | 
+    `---------'     `---------' 
+                        ∆     
+                        |     
+                 ,------------.     ,-----------. 
+                 | Componente | --> | Adaptador | 
+                 `------------'     `-----------' 
+                                         ∆           
+                                         |           
+                                  ,-------------.   
+                                  |  Proveedor  |   
+                                  `-------------'                                                 
 
 Y de ahí el nombre alternativo, arquitectura de *puertos* y *adaptadores*.
 
