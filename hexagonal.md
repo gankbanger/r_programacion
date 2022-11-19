@@ -4,6 +4,18 @@ Los desarrolladores de software nos encuentramos repetidamente con la misma preg
 
 [Alistair Cockburn contestó a esta pregunta en el 2005](https://alistair.cockburn.us/hexagonal-architecture/) con una solución genérica, aplicable a cualquier tipo de aplicación y cualquier lenguaje de programanción: La _arquitectura hexagonal_, también conocida como _arquitectura de puertos y adaptadores_.
 
+      ,---------.           ,--------.
+      | Cliente | ----> Puerto        \  
+      `---------'         /            \  
+                         (  Componente  )
+                          \            /   
+                           \        Adaptador
+                            `--------'  ∆           
+                                        |           
+                                 ,-------------.   
+                                 |  Proveedor  |   
+                                 `-------------'          
+
 ## Historia
 
 La popular arquitectura de capas, conocida también como arquitectura de 3-capas o N-capas, que se hizo popular a comienzos de siglo con el advenimiento de las aplicaciones cliente/servidor, propone separar los componentes capas, tradicionalmente 3:
@@ -269,7 +281,7 @@ Una versión más generalizada del diagrama sería:
 
 Y de ahí el nombre alternativo, arquitectura de *puertos* y *adaptadores*.
 
-El nombre arquitectura *hexagonal* viene de un diagrama comúnmente utilizado para representar el mismo concepto:
+El nombre arquitectura *hexagonal* viene de un diagrama comúnmente utilizado para representar el mismo concepto, el primer diagrama ilustrado en este artículo:
 
     ,---------.           ,--------.
     | Cliente | ----> Puerto        \  
