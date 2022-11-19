@@ -8,24 +8,20 @@ Los desarrolladores de software nos encuentramos repetidamente con la misma preg
 
 La popular arquitectura de capas, conocida también como arquitectura de 3-capas o N-capas, que se hizo popular a comienzos de siglo con el advenimiento de las aplicaciones cliente/servidor, propone separar los componentes capas, tradicionalmente 3:
 
-* Presentación
-* Lógica de negocios
-* Datos
-
-       ,------------. 
-       |Presentación| 
-       `------------'
-             |
-             V
+      ,------------. 
+      |Presentación| 
+      `------------'
+            |
+            V
     ,------------------.
     |Lógica de Negocios|
     `------------------'
-             |
-             V
+            |
+            V
       ,--------------.  
       |Acceso a Datos|   
       `--------------'  
- 
+
 Por ejemplo, una aplicación de un servicio REST, tendría en su capa de *presentación* una clase para exponer el punto de contacto REST `GET /cuentas/{id}`.
 
 En Java, un archivo `ControladorRESTCuentas.java` contiene la clase de la capa `presentación`
