@@ -4,17 +4,17 @@ Los desarrolladores de software nos encuentramos repetidamente con la misma preg
 
 [Alistair Cockburn contestó a esta pregunta en el 2005](https://alistair.cockburn.us/hexagonal-architecture/) con una solución genérica, aplicable a cualquier tipo de aplicación y cualquier lenguaje de programanción: La _arquitectura hexagonal_, también conocida como _arquitectura de puertos y adaptadores_.
 
-      ,---------.           ,--------.
-      | Cliente | ----> Puerto        \  
-      `---------'         /            \  
-                         (  Componente  )
-                          \            /   
-                           \        Adaptador
-                            `--------'  ∆           
-                                        |           
-                                 ,-------------.   
-                                 |  Proveedor  |   
-                                 `-------------'          
+      ,---------.          ,--------.
+      | Cliente | ---> Puerto        \  
+      `---------'        /            \  
+                        (  Componente  )
+                         \            /   
+                          \        Adaptador
+                           `--------'  ∆           
+                                       |           
+                                ,-------------.   
+                                |  Proveedor  |   
+                                `-------------'          
 
 ## Historia
 
@@ -42,12 +42,11 @@ En Java, un archivo `ControladorRESTCuentas.java` contiene la clase de la capa `
     
     import logica_de_negocios.ServicioCuentas;
     
-    @RestController
     class ControladorRESTCuentas {
     
       ServicioCuentas servicio;
     
-      @GetMapping("/cuentas/{id}")
+      // Responde a un pedido HTTP GET /cuentas/:id
       Cuenta obtenerPorId(@PathVariable Long id) {
           return servicio.obtenerPorId(id);
       }
@@ -279,9 +278,9 @@ Una versión más generalizada del diagrama sería:
                                   |  Proveedor  |   
                                   `-------------'                                                 
 
-Y de ahí el nombre alternativo, arquitectura de *puertos* y *adaptadores*.
+De ahí el nombre *arquitectura de puertos y adaptadores*.
 
-El nombre arquitectura *hexagonal* viene de un diagrama comúnmente utilizado para representar el mismo concepto, el primer diagrama ilustrado en este artículo:
+El nombre *arquitectura hexagonal* viene de un diagrama comúnmente utilizado para representar el mismo concepto, el primer diagrama ilustrado en este artículo:
 
     ,---------.           ,--------.
     | Cliente | ----> Puerto        \  
