@@ -2,23 +2,27 @@
 
 Los desarrolladores de software nos encuentramos repetidamente con la misma pregunta: **¿Cómo organizar los componentes y el código de un proyecto?**. 
 
-[Alistair Cockburn contestó a esta pregunta en el 2005](https://alistair.cockburn.us/hexagonal-architecture/) con una solución genérica, aplicable a cualquier tipo de aplicación y cualquier lenguaje de programanción: La _arquitectura hexagonal_, también conocida como _arquitectura de puertos y adaptadores_.
+[Alistair Cockburn contestó a esta pregunta en el 2005](https://alistair.cockburn.us/hexagonal-architecture/) con un patrón de arquitectura genérico: La _arquitectura hexagonal_, también conocida como _arquitectura de puertos y adaptadores_.
 
-      ,---------.          ,--------.
-      | Cliente | ---> Puerto        \  
-      `---------'        /            \  
-                        (  Componente  )
-                         \            /   
-                          \        Adaptador
-                           `--------'  ∆           
-                                       |           
-                                ,-------------.   
-                                |  Proveedor  |   
-                                `-------------'          
+             ,-----------------. 
+            / Infraestructura   \
+           /    ,------------.   \
+          /    / Aplicación   \   \
+         /    /    ,------.    \   \
+        /    /    /        \    \   \
+       (    (    (  Dominio )    )   )
+        \    \    \        /    /   /
+         \    \    `------'    /   /
+          \    \              /   /
+           \    `-----------'    /
+            \                   /
+             `-----------------'
+
+Esta arquitectura tiene como objetivo minimizar el acoplamiento entre componentes, minimizando el impacto de remplazar de componentes y facilitando el uso de _mocks_ en la automatización de pruebas.
 
 ## Historia
 
-La popular arquitectura de capas, conocida también como arquitectura de 3-capas o N-capas, que se hizo popular a comienzos de siglo con el advenimiento de las aplicaciones cliente/servidor, propone separar los componentes capas, tradicionalmente 3:
+La popular _arquitectura de capas_, conocida también como _arquitectura de 3-capas_ o _N-capas_, que se hizo popular a comienzos de siglo con el advenimiento de las aplicaciones cliente/servidor, propone separar los componentes capas, tradicionalmente en 3:
 
       ,------------. 
       |Presentación| 
@@ -34,9 +38,9 @@ La popular arquitectura de capas, conocida también como arquitectura de 3-capas
       |Acceso a Datos|   
       `--------------'  
 
-Por ejemplo, una aplicación de un servicio REST, tendría en su capa de *presentación* una clase para exponer el punto de contacto REST `GET /cuentas/{id}`.
+Por ejemplo, una aplicación de un servicio REST, tendría en su capa de _presentación_ una clase para exponer el punto de contacto REST `GET /cuentas/:id`.
 
-En Java, un archivo `ControladorRESTCuentas.java` contiene la clase de la capa `presentación`
+En Java, una implemtación posible sería una clase `ControladorRESTCuentas` en el paquete `presentación`:
 
     package presentacion;
     
@@ -47,12 +51,12 @@ En Java, un archivo `ControladorRESTCuentas.java` contiene la clase de la capa `
       ServicioCuentas servicio;
     
       // Responde a un pedido HTTP GET /cuentas/:id
-      Cuenta obtenerPorId(@PathVariable Long id) {
+      Cuenta obtenerPorId(long id) {
           return servicio.obtenerPorId(id);
       }
     }
 
-Lo importante de notar aquí es que la clase `ControladorRESTCuentas` tiene una instrucción:
+Lo importante de notar en esta clase `ControladorRESTCuentas` es la instrucción:
 
     import logica_de_negocios.ServicioCuentas;
 
@@ -60,19 +64,19 @@ Este `import` es la dependencia representada por la flecha:
 
        ,-----------------------------.
        |presentacion                 |
-       |  ,------------------------. |     
+       |  ,------------------------. |
        |  | ControladorRESTCuentas | |
        |  `------------------------' |
-       `----------------|------------'     
+       `----------------|------------'
                         |
-    ,-------------------|-------------. 
+    ,-------------------|-------------.
     |logica_de_negocios V             |
     |         ,-----------------.     |
     |         | ServicioCuentas |     |
     |         `-----------------'     |
     `---------------------------------'
 
-Es decir, para compilar correctamente, `presentacion.ControladorRESTCuentas` **necesita** de `logica_de_negocios.ServicioCuentas`, pero **no** vice versa.
+Es decir, para compilar correctamente `presentacion.ControladorRESTCuentas` se **necesita** acceso a `logica_de_negocios.ServicioCuentas`, pero **no** vice versa.
 
 Igualemente, una clase en la capa `logica_de_negocios` tendría una dependencia hacia una clase de la capa `acceso_a_datos`:
 
@@ -80,17 +84,16 @@ Igualemente, una clase en la capa `logica_de_negocios` tendría una dependencia 
     
     import acceso_a_datos.MySqlCuentas;
     
-    @Service
     class ServicioCuentas {
     
       MySqlCuentas repo;
     
-      Cuenta obtenerPorId(Long id) {
+      Cuenta obtenerPorId(long id) {
           return repo.selectCuentaPorId(id);
       }
     }
 
-Es una implementación un poco cruda, porque no hay lógica de negocios como tal, solo una llamada directa a la capa de `acceso_a_datos`, pero está bien, nos queremos concentrar en las dependencias. Otra vez, aquí la dependencia está marcada por:
+Es una implementación un poco cruda, porque no hay lógica de negocios como tal, solo una llamada directa a la capa de `acceso_a_datos`, pero es suficiente para el propósito de este artículo, nos queremos concentrar en las dependencias. Otra vez, aquí la dependencia está marcada por:
 
     import acceso_a_datos.MySqlCuentas;
 
@@ -113,18 +116,17 @@ Y es la dependencia representada por la flecha:
 
 Hasta ahora todo parece bien: Las capas lógicas nos permiten separar el código de presentación, el código aplicativo y el código de acceso a las bases de datos en diferentes paquetes. ¿Por qué no es suficiente este tipo de separación lógica?
 
-Imaginemos que ahora necesitamos cambiar la implementación de la clase `acceso_a_datos.MySqlCuentas` por una clase `acceso_a_datos.MongoDbCuentas`, y ya no regrese una clase tipo `Cuenta` sino que regrese una clase `Map<String, Object>`. Ahora nos vemos obligados no solamente a introducir la nueva clase `MongoDbCuentas`, sino también a **cambiar n el código de la clase dependiente:**`ServicioCuentas`.
+Imaginemos que ahora necesitamos cambiar la implementación de la clase `acceso_a_datos.MySqlCuentas` por una clase `acceso_a_datos.MongoDbCuentas`, y ya no regrese una clase tipo `Cuenta` sino que regrese una clase `Map<String, Object>`. Ahora nos vemos obligados no solamente a introducir la nueva clase `MongoDbCuentas`, sino también a **cambiar el código de la clase dependiente:** `ServicioCuentas`.
 
     package logica_de_negocios;
     
     import acceso_a_datos.MongoDbCuentas; // esta linea de código cambia
     
-    @Service
     class ServicioCuentas {
     
       MongoDbCuentas repo; // Esta linea de código cambia
     
-      Cuenta obtenerPorId(Long id) {
+      Cuenta obtenerPorId(long id) {
           // el cuerpo del método también cambia.
           Map<String, Object> rec = repo.selectCuentaPorId(id);
           return transformarRecToCuenta(rec);
@@ -133,19 +135,19 @@ Imaginemos que ahora necesitamos cambiar la implementación de la clase `acceso_
 
 Este cambio de código en la clase `ServicioCuentas` se ve representado por una nueva flecha hacia `MongoDbCuentas`.
 
-       ,------------------------.  
-       |logica_de_negocios      |     
-       |  ,-------------------. |     
-       |  | ServicioCuentas   | |    
-       |  `-------------------' |     
-       `-------------|-----\----'                                     
-                     x      \             
-    ,------------------------\-----------------. 
-    |acceso_a_datos           v                |
-    | ,-----------------.  ,-----------------. |
-    | | MySqlCuentas    |  | MongoDbCuentas  | |
-    | `-----------------'  `-----------------' | 
-    `------------------------------------------'
+       ,------------------------.
+       |logica_de_negocios      |
+       |  ,-------------------. |
+       |  | ServicioCuentas   | |
+       |  `-------------------' |
+       `-----------/-------\----'
+                  x         \
+    ,------------------------\---------.
+    |acceso_a_datos           v        |
+    | ,------------.  ,--------------. |
+    | |MySqlCuentas|  |MongoDbCuentas| |
+    | `------------'  `--------------' |
+    `----------------------------------'
     
 Parece un esfuerzo muy simple en este ejemplo, pero una aplicación real puede tener fácilmente docenas de clases en la capa de `logica_de_negocios` que nos veriamos obligados a cambiar.
 
@@ -158,7 +160,7 @@ El concepto de *interfaz* o *contrato* existe para proteger las clases de sus de
 Digamos que en lugar de la clase `MySqlCuentas`, `ServicioCuentas` depende de una interfaz `RepositorioCuentas`:
 
     interface RepositorioCuentas {
-        Cuenta obtenerCuenta(Long id);
+        Cuenta obtenerCuenta(long id);
     }
 
 El código de la clase `ServicioCuentas` sería:
@@ -167,12 +169,11 @@ El código de la clase `ServicioCuentas` sería:
     
     import acceso_a_datos.RepositorioCuentas;
     
-    @Service
     class ServicioCuentas {
     
       RepositorioCuentas repo;
     
-      Cuenta obtenerPorId(Long id) {
+      Cuenta obtenerPorId(long id) {
           return repo.obtenerCuenta(id);
       }
     }
@@ -181,10 +182,9 @@ En este caso, es la responsabilidad de la clase `MySqlCuentas` de satifacer el c
 
     package acceso_a_datos;
     
-    @Service
     class MySqlCuentas implements RepositorioCuentas {
     
-      Cuenta obtenerCuenta(Long id) {
+      Cuenta obtenerCuenta(long id) {
           // Código implementando la intefaz
       }
     }
@@ -193,32 +193,46 @@ En importante notar el `import` que la clase `MySqlCuentas` debe hacer en este c
 
 Gráficamente, estas dependencias serían:
 
-    ,------------------------.     ,------------------------. 
-    |logica_de_negocios      |     |acceso_a_datos          |
-    |  ,-------------------. |     | ,--------------------. |
-    |  | ServicioCuentas   | ------> | RepositorioCuentas | |
-    |  `-------------------' |     | `--------------------' |
-    `------------------------'     |            ∆           |
-                                   |            |           |
-                                   |   ,----------------.   |
-                                   |   |  MySqlCuentas  |   |
-                                   |   `----------------'   |
-                                   `------------------------'
+       ,------------------------.   
+       |logica_de_negocios      |   
+       |  ,-------------------. |   
+       |  | ServicioCuentas   | |
+       |  `-------------------' |
+       `-------------|----------' 
+                     |
+    ,----------------|------------. 
+    |acceso_a_datos  V            |
+    |    ,----------------------. |
+    |    |  RepositorioCuentas  | |
+    |    `----------------------' |
+    |               ∆             |
+    |               |             |
+    |      ,------------------.   |
+    |      |   MySqlCuentas   |   |
+    |      `------------------'   |
+    `-----------------------------'
 
 El diagrama deja en evidencia el beneficio de utilizar la intefaz: Si cambiamos `MySqlCuentas` por `MongoDbCuentas` (quién también debe satifacer la intefaz `RepositorioCuentas`), el cambio del código queda limitado dentro del paquete `acceso_a_datos`:
 
-    ,------------------------.   ,------------------------------------------. 
-    |logica_de_negocios      |   |acceso_a_datos                            |
-    |  ,-------------------. |   | ,--------------------.                   |
-    |  | ServicioCuentas   | ----> | RepositorioCuentas |                   |
-    |  `-------------------' |   | `--------------------'                   |
-    `------------------------'   |            ∆                             |
-                                 |            `-------------------.         |
-                                 |                                |         |
-                                 |   ,--------------.   ,----------------.  |
-                                 |   | MySqlCuentas |   | MongoDbCuentas |  |
-                                 |   `--------------'   `----------------'  |
-                                 `------------------------------------------'
+        ,------------------------.
+        |logica_de_negocios      |
+        |  ,-------------------. |
+        |  | ServicioCuentas   | |
+        |  `-------------------' |
+        `------------|-----------'
+                     |
+    ,----------------|---------------------. 
+    |acceso_a_datos  V                     |
+    |       ,--------------------.         |
+    |       | RepositorioCuentas |         |
+    |       `--------------------'         |
+    |               ∆      ∆               |
+    |           X---'      `-----.         |
+    |                            |         |
+    | ,--------------.  ,----------------. |
+    | | MySqlCuentas |  | MongoDbCuentas | |
+    | `--------------'  `----------------' |
+    `--------------------------------------'
 
 **el código en la capa de** `logica_de_negocios` **queda exactamente igual** dado que la dependencia de `ServicioCuentas` es con `RepositorioCuentas` y no con `MySqlCuentas`. Las lineas que código que antes cambiaban cuando no teníamos una *interfaz* de por medio, ahora quedan iguales:
 
@@ -233,7 +247,7 @@ El diagrama deja en evidencia el beneficio de utilizar la intefaz: Si cambiamos 
       // la referencia a la intefaz NO cambia
       RepositorioCuentas repo;
     
-      Cuenta obtenerPorId(Long id) {
+      Cuenta obtenerPorId(long id) {
           // el llamado a obtenerCuenta NO cambia
           return repo.obtenerCuenta(id);
       }
@@ -243,53 +257,73 @@ El diagrama deja en evidencia el beneficio de utilizar la intefaz: Si cambiamos 
 
 Este mismo patrón se puede aplicar para desacoplar la dependencia entre la capa `presentacion` y la capa `logica_de_negocios`:
 
-    ,------------------.   ,---------------------. 
-    |presentacion      |   |logica_de_negocios   |
-    |  ,------ ------. |   | ,-----------------. |
-    |  | RESTCuentas | ----> | GestionCuentas  | |
-    |  `-------------' |   | `-----------------' |
-    `------------------'   |          ∆          |     ,------------------------. 
-                           |          |          |     |acceso_a_datos          |
-                           | ,-----------------. |     | ,--------------------. |
-                           | | ServicioCuentas | ------> | RepositorioCuentas | |
-                           | `-----------------' |     | `--------------------' |
-                           `---------------------'     |            ∆           |
-                                                       |            |           |
-                                                       |   ,----------------.   |
-                                                       |   |  MySqlCuentas  |   |
-                                                       |   `----------------'   |
-                                                       `------------------------'
+            ,------------------.
+            |presentacion      |
+            |  ,------ ------. |
+            |  | RESTCuentas | |
+            |  `-------------' |
+            `-----------|------'
+    ,-------------------|-----------. 
+    |logica_de_negocios V           |
+    |           ,-----------------. |
+    |           | GestionCuentas  | |
+    |           `-----------------' |
+    |                    ∆          |
+    |                    |          |
+    |         ,-----------------.   |
+    |         | ServicioCuentas |   |
+    |         `-----------------'   |
+    `--------------------|----------'
+        ,----------------|----------. 
+        |acceso_a_datos  V          |
+        |      ,------------------. |
+        |      |RepositorioCuentas| |
+        |      `------------------' |
+        |                ∆          |
+        |                |          |
+        |       ,----------------.  |
+        |       |  MySqlCuentas  |  |
+        |       `----------------'  |
+        `---------------------------'
+
 
 El diagrama anterior ilustra el fundamento principal en el cuál se base la arquitectura hexagonal: Desacoplamiento de componentes a través de contratos.
 
 Una versión más generalizada del diagrama sería:
 
-    ,---------.     ,---------. 
-    | Cliente | --> | Puerto  | 
-    `---------'     `---------' 
-                        ∆     
-                        |     
-                 ,------------.     ,-----------. 
-                 | Componente | --> | Adaptador | 
-                 `------------'     `-----------' 
-                                         ∆           
-                                         |           
-                                  ,-------------.   
-                                  |  Proveedor  |   
-                                  `-------------'                                                 
+    ,-------.   ,------. 
+    |Cliente|-->|Puerto| 
+    `-------'   `------' 
+                    ∆
+                    |
+             ,----------.   ,-------.
+             |Componente|-->|Puerto |
+             `----------'   `-------'
+                                ∆
+                                |
+                            ,---------.
+                            |Proveedor|
+                            `---------'
 
-De ahí el nombre *arquitectura de puertos y adaptadores*.
+La *arquitectura hexagonal* propone una separación de afuera hacía adentro, dónde las capas más externas son las más cercanas a la tecnología y propensas a cambiar si la tecnología cambia, mientras que las capas más internas son las más cercanas a la lógica de negocios que no cambia de una tecnología a otra.
+El nombre *arquitectura hexagonal* viene de un diagrama comúnmente utilizado para representar el mismo concepto, el primer diagrama al comienzo de este artículo.
 
-El nombre *arquitectura hexagonal* viene de un diagrama comúnmente utilizado para representar el mismo concepto, el primer diagrama ilustrado en este artículo:
+      ,----------------------------.
+     / capa 2                       \
+    /                  ,-----.       \
+    ,---------.       / capa  \       \
+    |Adaptador|--> Puerto      \       \
+    `---------'     /           \       \
+                   ( Componente  )       \
+                    \           /         \
+                     \      Puerto         )
+                      `------' ∆          /
+                               |         /
+                           ,---------.  /
+                           |Adaptador| /   
+    \                      `---------'/
+     \                               /
+      `-----------------------------'
 
-    ,---------.           ,--------.
-    | Cliente | ----> Puerto        \  
-    `---------'         /            \  
-                       (  Componente  )
-                        \            /   
-                         \        Adaptador
-                          `--------'  ∆           
-                                      |           
-                               ,-------------.   
-                               |  Proveedor  |   
-                               `-------------'          
+Donde cada componente se ubica en una capa con una perspectiva diferente a la perspectiva de la arquitectura de capas. En la arquitectura hexagonal, las capas representan 
+
