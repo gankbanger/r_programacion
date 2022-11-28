@@ -24,6 +24,8 @@ Esta arquitectura tiene como objetivo minimizar el acoplamiento entre componente
 
 La popular _arquitectura de capas_, conocida también como _arquitectura de 3-capas_ o _N-capas_, que se hizo popular a comienzos de siglo con el advenimiento de las aplicaciones cliente/servidor, propone separar los componentes en capas, tradicionalmente en 3 capas:
 
+![](hexagonal.arch.springboot.template-Page-7.drawio.png)
+
       ,------------. 
       |Presentación| 
       `------------'
@@ -309,25 +311,41 @@ Una versión más generalizada del diagrama sería:
 
 El diagrama anterior es la pieza de Lego con la que se construye la *arquitectura hexagonal*.
 
-propone una separación de afuera hacía adentro, dónde las capas más externas son las más cercanas a la tecnología y propensas a cambiar si la tecnología cambia, mientras que las capas más internas son las más cercanas a la lógica de negocios que no cambia de una tecnología a otra.
-El nombre *arquitectura hexagonal* viene de un diagrama comúnmente utilizado para representar el mismo concepto, el primer diagrama al comienzo de este artículo.
+La *arquitectura hexagonal* propone una separación en capas concentricas, dónde las dependecias van de afuera hacía adentro, es decír, **las flechas solamente deben apuntar hacía las capas más internas. Nunca una capa debe tener dependencias hacía una capa más externa. dónde las capas más externas**.
+
+            ,-----------------. 
+            / Infraestructura   \
+           /    ,------------.   \
+          /    / Aplicación   \   \
+         /    /    ,------.    \   \
+        /    /    /        \    \   \
+       (    (    (  Dominio )    )   )
+        \    \    \        /    /   /
+         \    \    `------'    /   /
+          \    \              /   /
+           \    `-----------'    /
+            \                   /
+             `-----------------'
+
+La capa más externa, llamda *capa de infraesctura* es la más cercanas a la tecnología y la más propensa a cambiar, mientras que las capas internas son las más cercanas a la lógica de negocios que no cambia de una tecnología a otra.
+
 
       ,----------------------------.
-     / capa 2                       \
-    /                  ,-----.       \
-    ,---------.       / capa  \       \
-    |Adaptador|--> Puerto      \       \
-    `---------'     /           \       \
-                   ( Componente  )       \
-                    \           /         \
-                     \      Puerto         )
-                      `------' ∆          /
-                               |         /
+     / Infraestructura              \
+    /                ,--------.      \
+    ,---------.     /Aplicación\      \
+    |Adaptador|-->Puerto        \      \
+    `---------'   / ,----------. \      \
+                 (  |Componente|  )      \
+                  \ `----------' /        \
+                   \          Puerto       )
+                    `----------' ∆        /
+                                 |       /
                            ,---------.  /
                            |Adaptador| /   
     \                      `---------'/
      \                               /
       `-----------------------------'
 
-Donde cada componente se ubica en una capa con una perspectiva diferente a la perspectiva de la arquitectura de capas. En la arquitectura de capas, las capas representan una responsabilidad: Presentación, lógica de negocios o acceso a datos. En la arquitectura hexagonal, las capas representan un nivel de abstracción dónde lo maś cercano al exterior del hexágono corresponde a componentes cercanos a la infraestructura de la solución (como tal, tanto los componentes de presentación como los componentes de acceso a datos se encuentran en esta capa), una capa intermedia con la lógica de negocios, y un núcleo con los componentes representando conceptos de dominio.
+Es de notar que tanto los componentes de `presentación` como los componentes de `acceso a datos` se encuentran en la misma capa en la *arquitectura hexagonal*: en la capa de `infraestructura`. La capa intermedia: capa de `aplicación`, contienue los components con la lógica de negocios y finalmente, el núcleo: capa `dominio` contiene los componentes reutilizables de una aplicación a otra.
 
